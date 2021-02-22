@@ -1,4 +1,4 @@
-name: nexsurance
+name: projectname
 recipe: drupal9
 config:
   php: '7.3'
@@ -76,9 +76,9 @@ tooling:
 
 proxy:
   appserver:
-    - www.nexsurance.lndo.site
+    - www.projectname.lndo.site
   mailhog:
-    - mail-nexsurance.lndo.site
+    - mail-projectname.lndo.site
   # node:
   #   - node-nexsurance.lndo.site:32778
   #   - story-nexsurance.lndo.site:6006
