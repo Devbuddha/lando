@@ -1,0 +1,84 @@
+name: nexsurance
+recipe: drupal9
+config:
+  php: '7.3'
+  webroot: docroot
+  xdebug: true
+services:
+  appserver:
+    build_as_root:
+      - pecl uninstall xdebug
+      - pecl install xdebug-2.9.8
+    overrides:
+      environment:
+        PHP_SENDMAIL_PATH: '/usr/sbin/sendmail -S mailhog:1025'
+        PHP_IDE_CONFIG: "serverName=nexsurance"
+        DRUSH_OPTIONS_URI: "https://www.nexsurance.lndo.site"
+        DRUSH_OPTIONS_ROOT: '/app/docroot'
+        SIMPLETEST_BASE_URL: "http://appserver"
+        SIMPLETEST_DB: "sqlite://localhost/tmp/db.sqlite"
+        DRUPAL_TEST_WEBDRIVER_HOSTNAME: 'chrome'
+        BROWSERTEST_OUTPUT_DIRECTORY: '/app/web/sites/simpletest/browser_output'
+        MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless", "--no-sandbox", "--disable-dev-shm-usage"]}}, "http://chrome:9515"]'
+
+  mailhog:
+    type: mailhog
+    hogfrom:
+      - appserver
+
+  # node:
+  #   type: node
+  #   ssl: true
+
+  chrome:
+    type: compose
+    app_mount: false
+    services:
+      image: drupalci/webdriver-chromedriver:production
+      command: chromedriver --log-path=/tmp/chromedriver.log --verbose --whitelisted-ips=
+
+tooling:
+  phpcs:
+    service: appserver
+    cmd: "/app/vendor/bin/phpcs --standard=Drupal,DrupalPractice"
+    description: Run phpcs Drupal Coding Standards.
+  phpcbf:
+    service: appserver
+    cmd: "/app/vendor/bin/phpcbf --standard=Drupal"
+    description: Fix Drupal coding standards.
+  phpunit:
+    service: appserver
+    cmd: "vendor/bin/phpunit --configuration web/core"
+    description: Run PHPUnit tests.
+  # npm:
+  #   description: Runs npm commands
+  #   service: node
+  xdebug-on:
+    service: appserver
+    description: Enables xdebug for nginx
+    cmd: docker-php-ext-enable xdebug && pkill -o -USR2 php-fpm
+    user: root
+  xdebug-off:
+    service: appserver
+    description: Disables xdebug for nginx
+    cmd: rm /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && pkill -o -USR2 php-fpm
+    user: root
+  xdebug-profiler-on:
+    service: appserver
+    description: Enable xdebug profiler.
+    cmd: echo "xdebug.profiler_enable = 1\\nxdebug.profiler_output_dir = /app" >> /usr/local/etc/php/conf.d/xxx-lando-default.ini && pkill -o -USR2 php-fpm
+    user: root
+  xdebug-profiler-off:
+    service: appserver
+    description: Disable xdebug profiler.
+    cmd: pkill -o -USR2 php-fpm && cp /usr/local/etc/php/conf.d/xxx-lando-default.ini /tmp/lando.ini && sed -i '/xdebug\.profiler/d' /tmp/lando.ini && cp /tmp/lando.ini /usr/local/etc/php/conf.d/xxx-lando-default.ini
+    user: root
+
+proxy:
+  appserver:
+    - www.nexsurance.lndo.site
+  mailhog:
+    - mail-nexsurance.lndo.site
+  # node:
+  #   - node-nexsurance.lndo.site:32778
+  #   - story-nexsurance.lndo.site:6006
